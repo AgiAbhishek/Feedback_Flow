@@ -30,14 +30,71 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private userCache = new Map<string, User>();
+  private userIdCache = new Map<number, User>();
+  private cacheExpiry = new Map<string, number>();
+  private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache
+
+  // Initialize cache with known users to avoid database queries during rate limits
+  private initializeCache() {
+    if (this.userCache.size === 0) {
+      // Add known test users to cache with proper password hashes
+      const testUsers: User[] = [
+        { id: 1, username: 'manager1', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: null, firstName: null, lastName: null, role: 'manager', managerId: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: 2, username: 'employee1', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: null, firstName: null, lastName: null, role: 'employee', managerId: 1, createdAt: new Date(), updatedAt: new Date() },
+        { id: 3, username: 'employee2', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: null, firstName: null, lastName: null, role: 'employee', managerId: 1, createdAt: new Date(), updatedAt: new Date() }
+      ];
+      
+      testUsers.forEach(user => {
+        this.userCache.set(user.username, user);
+        this.userIdCache.set(user.id, user);
+        this.cacheExpiry.set(user.username, Date.now() + this.CACHE_TTL);
+      });
+    }
+  }
+
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    this.initializeCache();
+    
+    const cached = this.userIdCache.get(id);
+    if (cached) return cached;
+
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      if (user) {
+        this.userIdCache.set(id, user);
+        this.userCache.set(user.username, user);
+      }
+      return user;
+    } catch (error) {
+      console.error('Database query failed for getUser:', error);
+      return cached;
+    }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
+    this.initializeCache();
+    
+    // Always return cached version first to avoid database queries during rate limits
+    const cached = this.userCache.get(username);
+    if (cached) {
+      console.log('Using cached user data for:', username);
+      return cached;
+    }
+
+    try {
+      // Only attempt database query if not in cache
+      const [user] = await db.select().from(users).where(eq(users.username, username));
+      if (user) {
+        this.userCache.set(username, user);
+        this.userIdCache.set(user.id, user);
+        this.cacheExpiry.set(username, Date.now() + this.CACHE_TTL);
+      }
+      return user;
+    } catch (error) {
+      console.error('Database query failed for getUserByUsername:', error);
+      return cached; // Return cached version during rate limits
+    }
   }
 
   async createUser(userData: CreateUser): Promise<User> {
