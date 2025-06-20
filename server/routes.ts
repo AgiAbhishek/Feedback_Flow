@@ -7,33 +7,62 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
-  await setupAuth(app);
+  setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Admin routes for role management
+  app.get('/api/admin/users', isAdmin, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const users = await storage.getAllUsers();
+      // Don't send passwords to frontend
+      const safeUsers = users.map(user => ({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        managerId: user.managerId,
+      }));
+      res.json(safeUsers);
     } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch('/api/admin/users/:id/role', isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { role, managerId } = req.body;
+      
+      if (!['admin', 'manager', 'employee'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      const updatedUser = await storage.updateUserRole(parseInt(id), role, managerId);
+      res.json({
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        role: updatedUser.role,
+        managerId: updatedUser.managerId,
+      });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      res.status(500).json({ message: "Failed to update user role" });
     }
   });
 
   // Feedback routes
-  app.post('/api/feedback', isAuthenticated, async (req: any, res) => {
+  app.post('/api/feedback', isManager, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      
-      if (!user || user.role !== 'manager') {
-        return res.status(403).json({ message: "Only managers can create feedback" });
-      }
+      const managerId = req.user.id;
 
       const validatedData = insertFeedbackSchema.parse({
         ...req.body,
-        managerId: userId,
+        managerId,
       });
 
       const newFeedback = await storage.createFeedback(validatedData);
