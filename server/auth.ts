@@ -48,6 +48,7 @@ export function setupAuth(app: Express) {
       httpOnly: true,
       secure: false, // Set to true in production with HTTPS
       maxAge: sessionTtl,
+      sameSite: 'lax',
     },
   };
 
@@ -162,7 +163,15 @@ export function setupAuth(app: Express) {
 }
 
 export const isAuthenticated = (req: any, res: any, next: any) => {
-  if (!req.isAuthenticated()) {
+  console.log('Auth check:', { 
+    isAuthenticated: req.isAuthenticated(),
+    hasUser: !!req.user,
+    sessionID: req.sessionID,
+    method: req.method,
+    url: req.url
+  });
+  
+  if (!req.isAuthenticated() || !req.user) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   next();

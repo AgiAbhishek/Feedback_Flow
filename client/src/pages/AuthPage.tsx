@@ -36,13 +36,17 @@ export default function AuthPage() {
       return await response.json();
     },
     onSuccess: (user) => {
+      // Set the user data in cache and force refetch
       queryClient.setQueryData(["/api/user"], user);
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
       toast({
         title: "Login Successful",
         description: `Welcome back, ${user.firstName}!`,
       });
-      // Force page reload to trigger router update
-      window.location.href = "/";
+      // Small delay to ensure cache is updated
+      setTimeout(() => {
+        window.location.reload();
+      }, 200);
     },
     onError: (error: any) => {
       toast({
