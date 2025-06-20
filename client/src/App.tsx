@@ -5,9 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import NotFound from "@/pages/not-found";
-import Landing from "@/pages/Landing";
+import AuthPage from "@/pages/AuthPage";
 import ManagerDashboard from "@/pages/ManagerDashboard";
 import EmployeeDashboard from "@/pages/EmployeeDashboard";
+import AdminDashboard from "@/pages/AdminDashboard";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -23,14 +24,12 @@ function Router() {
   return (
     <Switch>
       {!isAuthenticated ? (
-        <Route path="/" component={Landing} />
+        <Route path="/" component={AuthPage} />
       ) : (
         <>
-          {user?.role === 'manager' ? (
-            <Route path="/" component={ManagerDashboard} />
-          ) : (
-            <Route path="/" component={EmployeeDashboard} />
-          )}
+          {user?.role === 'admin' && <Route path="/" component={AdminDashboard} />}
+          {user?.role === 'manager' && <Route path="/" component={ManagerDashboard} />}
+          {user?.role === 'employee' && <Route path="/" component={EmployeeDashboard} />}
         </>
       )}
       <Route component={NotFound} />

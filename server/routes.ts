@@ -78,28 +78,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/feedback/employee/:employeeId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { employeeId } = req.params;
-      const user = await storage.getUser(userId);
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      const employeeIdNum = parseInt(employeeId);
 
       // Employees can only see their own feedback
-      if (user.role === 'employee' && userId !== employeeId) {
+      if (req.user.role === 'employee' && userId !== employeeIdNum) {
         return res.status(403).json({ message: "Access denied" });
       }
 
       // Managers can only see feedback for their team members
-      if (user.role === 'manager') {
-        const employee = await storage.getUser(employeeId);
+      if (req.user.role === 'manager') {
+        const employee = await storage.getUser(employeeIdNum);
         if (!employee || employee.managerId !== userId) {
           return res.status(403).json({ message: "Access denied" });
         }
       }
 
-      const feedbackList = await storage.getFeedbackWithUsers(undefined, employeeId);
+      const feedbackList = await storage.getFeedbackWithUsers(undefined, employeeIdNum);
       res.json(feedbackList);
     } catch (error) {
       console.error("Error fetching feedback:", error);
