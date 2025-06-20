@@ -1,5 +1,5 @@
-const crypto = require('crypto');
-const { promisify } = require('util');
+import crypto from 'crypto';
+import { promisify } from 'util';
 
 const scryptAsync = promisify(crypto.scrypt);
 
