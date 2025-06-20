@@ -2,7 +2,7 @@ import {
   users,
   feedback,
   type User,
-  type UpsertUser,
+  type CreateUser,
   type Feedback,
   type InsertFeedback,
 } from "@shared/schema";
@@ -10,39 +10,53 @@ import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
 
 export interface IStorage {
-  // User operations - required for Replit Auth
-  getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  // User operations
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(userData: CreateUser): Promise<User>;
+  updateUserRole(id: number, role: string, managerId?: number): Promise<User>;
   
   // Feedback operations
   createFeedback(feedbackData: InsertFeedback): Promise<Feedback>;
-  getFeedbackByEmployee(employeeId: string): Promise<Feedback[]>;
-  getFeedbackByManager(managerId: string): Promise<Feedback[]>;
+  getFeedbackByEmployee(employeeId: number): Promise<Feedback[]>;
+  getFeedbackByManager(managerId: number): Promise<Feedback[]>;
   updateFeedback(id: number, feedbackData: Partial<InsertFeedback>): Promise<Feedback>;
   acknowledgeFeedback(id: number): Promise<Feedback>;
   
   // Team operations
-  getTeamMembers(managerId: string): Promise<User[]>;
-  getFeedbackWithUsers(managerId?: string, employeeId?: string): Promise<(Feedback & { manager: User; employee: User })[]>;
+  getTeamMembers(managerId: number): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
+  getFeedbackWithUsers(managerId?: number, employeeId?: number): Promise<(Feedback & { manager: User; employee: User })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async createUser(userData: CreateUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
+      .returning();
+    return user;
+  }
+
+  async updateUserRole(id: number, role: string, managerId?: number): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ 
+        role, 
+        managerId: managerId || null,
+        updatedAt: new Date() 
       })
+      .where(eq(users.id, id))
       .returning();
     return user;
   }
@@ -55,7 +69,7 @@ export class DatabaseStorage implements IStorage {
     return newFeedback;
   }
 
-  async getFeedbackByEmployee(employeeId: string): Promise<Feedback[]> {
+  async getFeedbackByEmployee(employeeId: number): Promise<Feedback[]> {
     return await db
       .select()
       .from(feedback)
@@ -63,7 +77,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(feedback.createdAt));
   }
 
-  async getFeedbackByManager(managerId: string): Promise<Feedback[]> {
+  async getFeedbackByManager(managerId: number): Promise<Feedback[]> {
     return await db
       .select()
       .from(feedback)
@@ -93,47 +107,24 @@ export class DatabaseStorage implements IStorage {
     return updatedFeedback;
   }
 
-  async getTeamMembers(managerId: string): Promise<User[]> {
+  async getTeamMembers(managerId: number): Promise<User[]> {
     return await db
       .select()
       .from(users)
       .where(eq(users.managerId, managerId));
   }
 
-  async getFeedbackWithUsers(managerId?: string, employeeId?: string): Promise<(Feedback & { manager: User; employee: User })[]> {
-    let query = db
-      .select({
-        id: feedback.id,
-        managerId: feedback.managerId,
-        employeeId: feedback.employeeId,
-        strengths: feedback.strengths,
-        improvements: feedback.improvements,
-        sentiment: feedback.sentiment,
-        acknowledged: feedback.acknowledged,
-        acknowledgedAt: feedback.acknowledgedAt,
-        createdAt: feedback.createdAt,
-        updatedAt: feedback.updatedAt,
-        manager: users,
-        employee: users,
-      })
-      .from(feedback)
-      .leftJoin(users, eq(feedback.managerId, users.id))
-      .leftJoin(users, eq(feedback.employeeId, users.id));
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
 
-    if (managerId) {
-      query = query.where(eq(feedback.managerId, managerId));
-    }
-    if (employeeId) {
-      query = query.where(eq(feedback.employeeId, employeeId));
-    }
-
-    // This is a simplified approach - in practice, you'd need proper joins
-    const results = await db
-      .select()
-      .from(feedback)
-      .orderBy(desc(feedback.createdAt));
-
+  async getFeedbackWithUsers(managerId?: number, employeeId?: number): Promise<(Feedback & { manager: User; employee: User })[]> {
+    // Get feedback based on filters
+    let feedbackQuery = db.select().from(feedback).orderBy(desc(feedback.createdAt));
+    
+    const results = await feedbackQuery;
     const enrichedResults = [];
+    
     for (const fb of results) {
       if (managerId && fb.managerId !== managerId) continue;
       if (employeeId && fb.employeeId !== employeeId) continue;

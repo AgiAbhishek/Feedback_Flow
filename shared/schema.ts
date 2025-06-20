@@ -7,12 +7,13 @@ import {
   index,
   serial,
   boolean,
+  integer,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Session storage table - required for Replit Auth
+// Session storage table
 export const sessions = pgTable(
   "sessions",
   {
@@ -23,15 +24,16 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table - required for Replit Auth
+// User storage table
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(),
+  id: serial("id").primaryKey(),
+  username: varchar("username").unique().notNull(),
+  password: varchar("password").notNull(),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role").notNull().default("employee"), // 'manager' or 'employee'
-  managerId: varchar("manager_id").references(() => users.id),
+  role: varchar("role").notNull().default("employee"), // 'admin', 'manager', or 'employee'
+  managerId: integer("manager_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -39,8 +41,8 @@ export const users = pgTable("users", {
 // Feedback table
 export const feedback = pgTable("feedback", {
   id: serial("id").primaryKey(),
-  managerId: varchar("manager_id").notNull().references(() => users.id),
-  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  managerId: integer("manager_id").notNull(),
+  employeeId: integer("employee_id").notNull(),
   strengths: text("strengths").notNull(),
   improvements: text("improvements").notNull(),
   sentiment: varchar("sentiment").notNull(), // 'positive', 'neutral', 'negative'
@@ -90,13 +92,20 @@ export const insertFeedbackSchema = createInsertSchema(feedback).omit({
   acknowledgedAt: true,
 });
 
-export const upsertUserSchema = createInsertSchema(users).omit({
+export const createUserSchema = createInsertSchema(users).omit({
+  id: true,
   createdAt: true,
   updatedAt: true,
 });
 
+export const loginSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+});
+
 // Types
-export type UpsertUser = z.infer<typeof upsertUserSchema>;
+export type CreateUser = z.infer<typeof createUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertFeedback = z.infer<typeof insertFeedbackSchema>;
 export type Feedback = typeof feedback.$inferSelect;
+export type LoginCredentials = z.infer<typeof loginSchema>;
