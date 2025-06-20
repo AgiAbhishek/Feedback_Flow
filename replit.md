@@ -26,7 +26,7 @@ The application follows a monorepo pattern with clear separation:
 - **Provider**: Traditional username/password authentication with Passport.js Local Strategy
 - **Password Security**: Scrypt-based password hashing with salt
 - **Session Management**: PostgreSQL-backed sessions using connect-pg-simple
-- **Role-based Access**: Three roles (admin/manager/employee) with appropriate permissions
+- **Role-based Access**: Two primary roles (manager/employee) with appropriate permissions
 - **Security**: HTTP-only cookies, secure session handling, foreign key constraints
 
 ### Database Schema
