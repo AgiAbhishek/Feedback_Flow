@@ -105,7 +105,10 @@ The application follows a monorepo pattern with clear separation:
 
 ```
 Changelog:
-- June 20, 2025. Initial setup
+- June 20, 2025. Initial setup with complete feedback system
+- June 20, 2025. Fixed authentication session management and query cache synchronization
+- June 20, 2025. Streamlined to 2 core roles (manager/employee) per requirements
+- June 20, 2025. Implemented all minimum features: login system, feedback submission, visibility rules, dashboards
 ```
 
 ## User Preferences

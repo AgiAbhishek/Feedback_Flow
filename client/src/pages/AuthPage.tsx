@@ -36,7 +36,7 @@ export default function AuthPage() {
       return await response.json();
     },
     onSuccess: (user) => {
-      queryClient.setQueryData(["/api/auth/user"], user);
+      queryClient.setQueryData(["/api/user"], user);
       toast({
         title: "Login Successful",
         description: `Welcome back, ${user.firstName}!`,
