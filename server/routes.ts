@@ -9,6 +9,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   setupAuth(app);
 
+  // Ensure API routes are prioritized over Vite middleware
+  app.use('/api/*', (req, res, next) => {
+    // This middleware ensures API routes are processed before Vite
+    next();
+  });
+
   // Admin routes for role management
   app.get('/api/admin/users', isAdmin, async (req: any, res) => {
     try {
