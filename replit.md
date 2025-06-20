@@ -23,10 +23,11 @@ The application follows a monorepo pattern with clear separation:
 ## Key Components
 
 ### Authentication System
-- **Provider**: Replit Auth with OpenID Connect integration
+- **Provider**: Traditional username/password authentication with Passport.js Local Strategy
+- **Password Security**: Scrypt-based password hashing with salt
 - **Session Management**: PostgreSQL-backed sessions using connect-pg-simple
-- **Role-based Access**: Two roles (manager/employee) with appropriate permissions
-- **Security**: HTTP-only cookies, secure session handling
+- **Role-based Access**: Three roles (admin/manager/employee) with appropriate permissions
+- **Security**: HTTP-only cookies, secure session handling, foreign key constraints
 
 ### Database Schema
 - **Users Table**: Stores user profiles with role assignments and manager relationships

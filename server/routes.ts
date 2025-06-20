@@ -213,11 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid role" });
       }
 
-      const updatedUser = await storage.upsertUser({
-        id: userId,
-        role,
-        managerId: role === 'employee' ? managerId : null,
-      });
+      const updatedUser = await storage.updateUserRole(userId, role, managerId);
 
       res.json(updatedUser);
     } catch (error) {
