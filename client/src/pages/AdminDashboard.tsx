@@ -177,7 +177,7 @@ export default function AdminDashboard() {
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                         <span className="text-white font-medium text-sm">
-                          {getInitials(userItem.firstName, userItem.lastName)}
+                          {getInitials(userItem.firstName || '', userItem.lastName || '')}
                         </span>
                       </div>
                       <div>

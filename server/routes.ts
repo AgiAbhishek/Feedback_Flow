@@ -206,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user role (for demo purposes)
   app.patch('/api/user/role', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { role, managerId } = req.body;
 
       if (!['manager', 'employee'].includes(role)) {
