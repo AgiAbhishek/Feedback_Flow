@@ -105,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/feedback/manager', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
 
       if (!user || user.role !== 'manager') {
@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/feedback/:id/acknowledge', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { id } = req.params;
       const feedbackId = parseInt(id);
 
@@ -152,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/feedback/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { id } = req.params;
       const feedbackId = parseInt(id);
 
@@ -188,7 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Team routes
   app.get('/api/team', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
 
       if (!user || user.role !== 'manager') {
