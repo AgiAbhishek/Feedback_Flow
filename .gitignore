@@ -1,6 +1,18 @@
+# Ignore environment config
+.env
+
+# Node.js dependencies
 node_modules
+
+# Build output
 dist
+
+# macOS system file
 .DS_Store
+
+# Public files (if not needed in repo)
 server/public
+
+# Vite config backup or environment-specific variants
 vite.config.ts.*
 *.tar.gz
