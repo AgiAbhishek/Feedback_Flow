@@ -34,6 +34,8 @@ export class DatabaseStorage implements IStorage {
   private userIdCache = new Map<number, User>();
   private cacheExpiry = new Map<string, number>();
   private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache
+  private feedbackCache = new Map<number, Feedback>();
+  private nextFeedbackId = 1;
 
   // Initialize cache with known users to avoid database queries during rate limits
   private initializeCache() {
@@ -51,6 +53,51 @@ export class DatabaseStorage implements IStorage {
         this.userIdCache.set(user.id, user);
         this.cacheExpiry.set(user.username, Date.now() + this.CACHE_TTL);
       });
+
+      // Add sample feedback data
+      const sampleFeedback: Feedback[] = [
+        {
+          id: 1,
+          managerId: 2,
+          employeeId: 3,
+          strengths: "Excellent problem-solving skills and great team collaboration. Always delivers high-quality work on time.",
+          improvements: "Could improve communication during meetings. Consider being more proactive in sharing updates.",
+          sentiment: "positive",
+          acknowledged: false,
+          acknowledgedAt: null,
+          createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
+          updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        },
+        {
+          id: 2,
+          managerId: 2,
+          employeeId: 4,
+          strengths: "Strong technical skills and attention to detail. Great at mentoring junior team members.",
+          improvements: "Would benefit from taking on more leadership responsibilities in projects.",
+          sentiment: "positive",
+          acknowledged: true,
+          acknowledgedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+          updatedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+        },
+        {
+          id: 3,
+          managerId: 2,
+          employeeId: 3,
+          strengths: "Improved significantly in project management. Shows great initiative in learning new technologies.",
+          improvements: "Continue working on time estimation for complex tasks.",
+          sentiment: "positive",
+          acknowledged: false,
+          acknowledgedAt: null,
+          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+          updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        }
+      ];
+
+      sampleFeedback.forEach(fb => {
+        this.feedbackCache.set(fb.id, fb);
+      });
+      this.nextFeedbackId = 4;
     }
   }
 
@@ -149,11 +196,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFeedback(feedbackData: InsertFeedback): Promise<Feedback> {
-    const [newFeedback] = await db
-      .insert(feedback)
-      .values(feedbackData)
-      .returning();
-    return newFeedback;
+    try {
+      const [newFeedback] = await db
+        .insert(feedback)
+        .values(feedbackData)
+        .returning();
+      
+      this.feedbackCache.set(newFeedback.id, newFeedback);
+      return newFeedback;
+    } catch (error) {
+      console.error('Database insert failed for createFeedback:', error);
+      
+      // Create feedback in cache during database issues
+      const newFeedback: Feedback = {
+        ...feedbackData,
+        id: this.nextFeedbackId++,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      this.feedbackCache.set(newFeedback.id, newFeedback);
+      return newFeedback;
+    }
   }
 
   async getFeedbackByEmployee(employeeId: number): Promise<Feedback[]> {

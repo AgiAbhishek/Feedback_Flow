@@ -5,16 +5,18 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import Layout from "@/components/Layout";
 import FeedbackForm from "@/components/FeedbackForm";
+import EmployeeForm from "@/components/EmployeeForm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, MessageSquare, ThumbsUp, Clock, Plus } from "lucide-react";
+import { Users, MessageSquare, ThumbsUp, Clock, Plus, UserPlus } from "lucide-react";
 import type { User, Feedback } from "@shared/schema";
 
 export default function ManagerDashboard() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -161,13 +163,23 @@ export default function ManagerDashboard() {
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Team Members</h3>
-              <Button 
-                onClick={() => setShowFeedbackForm(true)}
-                className="bg-primary text-white hover:bg-primary-600"
-              >
-                <Plus className="mr-2" size={16} />
-                Give Feedback
-              </Button>
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={() => setShowEmployeeForm(true)}
+                  variant="outline"
+                  className="border-primary text-primary hover:bg-primary hover:text-white"
+                >
+                  <UserPlus className="mr-2" size={16} />
+                  Add Employee
+                </Button>
+                <Button 
+                  onClick={() => setShowFeedbackForm(true)}
+                  className="bg-primary text-white hover:bg-primary-600"
+                >
+                  <Plus className="mr-2" size={16} />
+                  Give Feedback
+                </Button>
+              </div>
             </div>
           </div>
           <CardContent className="p-6">
@@ -262,6 +274,15 @@ export default function ManagerDashboard() {
           <FeedbackForm
             teamMembers={teamMembers}
             onClose={() => setShowFeedbackForm(false)}
+          />
+        )}
+
+        {showEmployeeForm && (
+          <EmployeeForm
+            open={showEmployeeForm}
+            onClose={() => setShowEmployeeForm(false)}
+            currentUserId={user?.id || 0}
+            managers={[{ id: user?.id || 0, firstName: user?.firstName || '', lastName: user?.lastName || '' }]}
           />
         )}
       </div>
