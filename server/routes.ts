@@ -9,9 +9,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   setupAuth(app);
 
-  // Ensure API routes are prioritized over Vite middleware
-  app.use('/api/*', (req, res, next) => {
-    // This middleware ensures API routes are processed before Vite
+  // Add explicit API route handler to prevent Vite interference
+  app.use('/api', (req, res, next) => {
+    // Ensure API routes are handled by Express, not Vite
+    res.setHeader('Content-Type', 'application/json');
     next();
   });
 
