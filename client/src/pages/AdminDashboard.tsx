@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Settings, Shield, UserCheck, UserX } from "lucide-react";
-import type { User } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Settings, Shield, UserCheck, UserX, MessageSquare, Clock } from "lucide-react";
+import type { User, Feedback } from "@shared/schema";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -19,6 +20,11 @@ export default function AdminDashboard() {
 
   const { data: allUsers = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
+    enabled: user?.role === 'admin',
+  });
+
+  const { data: allFeedback = [], isLoading: feedbackLoading } = useQuery<(Feedback & { manager: User; employee: User })[]>({
+    queryKey: ["/api/admin/feedback"],
     enabled: user?.role === 'admin',
   });
 
@@ -54,12 +60,6 @@ export default function AdminDashboard() {
       case 'employee': return 'bg-green-100 text-green-700';
       default: return 'bg-gray-100 text-gray-700';
     }
-  };
-
-  const getInitials = (firstName?: string, lastName?: string) => {
-    const first = firstName || '';
-    const last = lastName || '';
-    return (first.charAt(0) + last.charAt(0)).toUpperCase() || '??';
   };
 
   const managers = allUsers.filter(u => u.role === 'manager');
@@ -133,91 +133,170 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        {/* User Management Table */}
-        <Card>
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
-              <div className="flex items-center space-x-4">
-                <Select value={selectedManagerId} onValueChange={setSelectedManagerId}>
-                  <SelectTrigger className="w-48">
-                    <SelectValue placeholder="Select manager for employees" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {managers.map((manager) => (
-                      <SelectItem key={manager.id} value={manager.id.toString()}>
-                        {manager.firstName} {manager.lastName}
-                      </SelectItem>
+        {/* Admin Tabs */}
+        <Tabs defaultValue="users" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="feedback">Feedback Tracking</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="users">
+            <Card>
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
+                  <div className="flex items-center space-x-4">
+                    <Select value={selectedManagerId} onValueChange={setSelectedManagerId}>
+                      <SelectTrigger className="w-48">
+                        <SelectValue placeholder="Select manager for employees" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {managers.map((manager) => (
+                          <SelectItem key={manager.id} value={manager.id.toString()}>
+                            {manager.firstName} {manager.lastName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+              <CardContent className="p-6">
+                {usersLoading ? (
+                  <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="animate-pulse flex items-center justify-between p-4 bg-gray-100 rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+                          <div className="space-y-2">
+                            <div className="h-4 bg-gray-300 rounded w-32"></div>
+                            <div className="h-3 bg-gray-300 rounded w-48"></div>
+                          </div>
+                        </div>
+                        <div className="w-24 h-8 bg-gray-300 rounded"></div>
+                      </div>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <CardContent className="p-6">
-            {usersLoading ? (
-              <div className="space-y-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 bg-gray-300 rounded w-1/4"></div>
-                        <div className="h-3 bg-gray-300 rounded w-1/6"></div>
-                      </div>
-                      <div className="h-8 bg-gray-300 rounded w-24"></div>
-                    </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {allUsers.map((userItem) => (
-                  <div key={userItem.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                        <span className="text-white font-medium text-sm">
-                          {getInitials(userItem.firstName || '', userItem.lastName || '')}
-                        </span>
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-gray-900">
-                          {userItem.firstName} {userItem.lastName}
-                        </h4>
-                        <p className="text-sm text-gray-600">{userItem.email}</p>
-                        <p className="text-xs text-gray-500">@{userItem.username}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <Badge className={getRoleColor(userItem.role)}>
-                        {userItem.role.charAt(0).toUpperCase() + userItem.role.slice(1)}
-                      </Badge>
-                      {userItem.managerId && (
-                        <span className="text-xs text-gray-500">
-                          Manager: {managers.find(m => m.id === userItem.managerId)?.firstName}
-                        </span>
-                      )}
-                      <Select 
-                        value={userItem.role} 
-                        onValueChange={(newRole) => handleRoleChange(userItem.id, newRole)}
-                        disabled={updateRoleMutation.isPending}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="employee">Employee</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                ) : allUsers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
+                    <p className="mt-1 text-sm text-gray-500">Users will appear here once they are created.</p>
                   </div>
-                ))}
+                ) : (
+                  <div className="space-y-4">
+                    {allUsers.map((userItem) => (
+                      <div key={userItem.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                            <span className="text-white font-medium text-sm">
+                              {(userItem.firstName?.charAt(0) || '') + (userItem.lastName?.charAt(0) || '')}
+                            </span>
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-gray-900">
+                              {userItem.firstName} {userItem.lastName}
+                            </h4>
+                            <p className="text-sm text-gray-600">{userItem.email}</p>
+                            <Badge className={`mt-1 ${getRoleColor(userItem.role)}`}>
+                              {userItem.role}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <Select
+                            value={userItem.role}
+                            onValueChange={(newRole) => handleRoleChange(userItem.id, newRole)}
+                            disabled={updateRoleMutation.isPending}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="admin">Admin</SelectItem>
+                              <SelectItem value="manager">Manager</SelectItem>
+                              <SelectItem value="employee">Employee</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="feedback">
+            <Card>
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Feedback Tracking</h3>
+                <p className="text-sm text-gray-600 mt-1">Monitor all feedback across the organization</p>
               </div>
-            )}
-          </CardContent>
-        </Card>
+              <CardContent className="p-6">
+                {feedbackLoading ? (
+                  <div className="text-center py-8">
+                    <Clock className="mx-auto h-12 w-12 text-gray-400 animate-spin" />
+                    <p className="mt-2 text-sm text-gray-500">Loading feedback data...</p>
+                  </div>
+                ) : allFeedback.length === 0 ? (
+                  <div className="text-center py-8">
+                    <MessageSquare className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No feedback found</h3>
+                    <p className="mt-1 text-sm text-gray-500">Feedback submissions will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {allFeedback.map((feedback) => (
+                      <div key={feedback.id} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="font-medium text-gray-900">
+                                {feedback.manager.firstName} {feedback.manager.lastName}
+                              </span>
+                              <span className="text-gray-500">→</span>
+                              <span className="font-medium text-gray-900">
+                                {feedback.employee.firstName} {feedback.employee.lastName}
+                              </span>
+                              <Badge variant={feedback.sentiment === 'positive' ? 'default' : feedback.sentiment === 'neutral' ? 'secondary' : 'destructive'}>
+                                {feedback.sentiment}
+                              </Badge>
+                            </div>
+                            <div className="space-y-2">
+                              <div>
+                                <span className="text-sm font-medium text-green-700">Strengths:</span>
+                                <p className="text-sm text-gray-600 mt-1">{feedback.strengths}</p>
+                              </div>
+                              <div>
+                                <span className="text-sm font-medium text-blue-700">Areas for Improvement:</span>
+                                <p className="text-sm text-gray-600 mt-1">{feedback.improvements}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="ml-4 text-right">
+                            <div className="text-xs text-gray-500">
+                              {new Date(feedback.createdAt!).toLocaleDateString()}
+                            </div>
+                            {feedback.acknowledged ? (
+                              <Badge variant="outline" className="mt-1">
+                                Acknowledged
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="mt-1">
+                                Pending
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );

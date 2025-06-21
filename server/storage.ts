@@ -183,16 +183,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserRole(id: number, role: string, managerId?: number): Promise<User> {
-    const [user] = await db
-      .update(usersTable)
-      .set({ 
-        role, 
+    this.initializeCache();
+    
+    // Update in cache first
+    const existingUser = this.userIdCache.get(id);
+    if (existingUser) {
+      const updatedUser: User = {
+        ...existingUser,
+        role,
         managerId: managerId || null,
-        updatedAt: new Date() 
-      })
-      .where(eq(usersTable.id, id))
-      .returning();
-    return user;
+        updatedAt: new Date(),
+      };
+      
+      // Update both caches
+      this.userIdCache.set(id, updatedUser);
+      this.userCache.set(existingUser.username, updatedUser);
+      
+      return updatedUser;
+    }
+
+    try {
+      const [user] = await db
+        .update(usersTable)
+        .set({ 
+          role, 
+          managerId: managerId || null,
+          updatedAt: new Date() 
+        })
+        .where(eq(usersTable.id, id))
+        .returning();
+      
+      // Update caches with database result
+      this.userIdCache.set(id, user);
+      this.userCache.set(user.username, user);
+      
+      return user;
+    } catch (error) {
+      console.error('Database update failed for updateUserRole:', error);
+      throw new Error('Failed to update user role');
+    }
   }
 
   async createFeedback(feedbackData: InsertFeedback): Promise<Feedback> {

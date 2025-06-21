@@ -142,6 +142,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin feedback tracking - view all feedback across the system
+  app.get("/api/admin/feedback", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const allFeedback = await storage.getFeedbackWithUsers();
+      res.json(allFeedback);
+    } catch (error) {
+      console.error("Error fetching admin feedback:", error);
+      res.status(500).json({ message: "Failed to fetch feedback" });
+    }
+  });
+
   app.get('/api/feedback/employee/:employeeId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
