@@ -61,7 +61,7 @@ export class DatabaseStorage implements IStorage {
     if (cached) return cached;
 
     try {
-      const [user] = await db.select().from(users).where(eq(users.id, id));
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
       if (user) {
         this.userIdCache.set(id, user);
         this.userCache.set(user.username, user);
@@ -85,7 +85,7 @@ export class DatabaseStorage implements IStorage {
 
     try {
       // Only attempt database query if not in cache
-      const [user] = await db.select().from(users).where(eq(users.username, username));
+      const [user] = await db.select().from(usersTable).where(eq(usersTable.username, username));
       if (user) {
         this.userCache.set(username, user);
         this.userIdCache.set(user.id, user);
@@ -103,7 +103,7 @@ export class DatabaseStorage implements IStorage {
   async createUser(userData: CreateUser): Promise<User> {
     try {
       const [user] = await db
-        .insert(users)
+        .insert(usersTable)
         .values(userData)
         .returning();
       
@@ -117,6 +117,11 @@ export class DatabaseStorage implements IStorage {
       // Create user in cache during database issues
       const newUser: User = {
         ...userData,
+        email: userData.email || null,
+        firstName: userData.firstName || null,
+        lastName: userData.lastName || null,
+        role: userData.role || 'employee',
+        managerId: userData.managerId || null,
         id: this.nextUserId++,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -132,13 +137,13 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserRole(id: number, role: string, managerId?: number): Promise<User> {
     const [user] = await db
-      .update(users)
+      .update(usersTable)
       .set({ 
         role, 
         managerId: managerId || null,
         updatedAt: new Date() 
       })
-      .where(eq(users.id, id))
+      .where(eq(usersTable.id, id))
       .returning();
     return user;
   }
