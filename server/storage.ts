@@ -211,6 +211,8 @@ export class DatabaseStorage implements IStorage {
       const newFeedback: Feedback = {
         ...feedbackData,
         id: this.nextFeedbackId++,
+        acknowledged: false,
+        acknowledgedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -221,19 +223,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeedbackByEmployee(employeeId: number): Promise<Feedback[]> {
-    return await db
-      .select()
-      .from(feedback)
-      .where(eq(feedback.employeeId, employeeId))
-      .orderBy(desc(feedback.createdAt));
+    this.initializeCache();
+    
+    // Get feedback from cache first
+    const cachedFeedback = Array.from(this.feedbackCache.values())
+      .filter(fb => fb.employeeId === employeeId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+    
+    if (cachedFeedback.length > 0) {
+      return cachedFeedback;
+    }
+
+    try {
+      return await db
+        .select()
+        .from(feedback)
+        .where(eq(feedback.employeeId, employeeId))
+        .orderBy(desc(feedback.createdAt));
+    } catch (error) {
+      console.error('Database query failed for getFeedbackByEmployee:', error);
+      return cachedFeedback;
+    }
   }
 
   async getFeedbackByManager(managerId: number): Promise<Feedback[]> {
-    return await db
-      .select()
-      .from(feedback)
-      .where(eq(feedback.managerId, managerId))
-      .orderBy(desc(feedback.createdAt));
+    this.initializeCache();
+    
+    // Get feedback from cache first
+    const cachedFeedback = Array.from(this.feedbackCache.values())
+      .filter(fb => fb.managerId === managerId)
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+    
+    if (cachedFeedback.length > 0) {
+      return cachedFeedback;
+    }
+
+    try {
+      return await db
+        .select()
+        .from(feedback)
+        .where(eq(feedback.managerId, managerId))
+        .orderBy(desc(feedback.createdAt));
+    } catch (error) {
+      console.error('Database query failed for getFeedbackByManager:', error);
+      return cachedFeedback;
+    }
   }
 
   async updateFeedback(id: number, feedbackData: Partial<InsertFeedback>): Promise<Feedback> {
@@ -304,29 +338,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeedbackWithUsers(managerId?: number, employeeId?: number): Promise<(Feedback & { manager: User; employee: User })[]> {
-    // Get feedback based on filters
-    let feedbackQuery = db.select().from(feedback).orderBy(desc(feedback.createdAt));
+    this.initializeCache();
     
-    const results = await feedbackQuery;
-    const enrichedResults = [];
+    // Use cached data to avoid database complexity during rate limits
+    const allFeedback = Array.from(this.feedbackCache.values());
+    const allUsers = Array.from(this.userCache.values());
     
-    for (const fb of results) {
-      if (managerId && fb.managerId !== managerId) continue;
-      if (employeeId && fb.employeeId !== employeeId) continue;
-
-      const manager = await this.getUser(fb.managerId);
-      const employee = await this.getUser(fb.employeeId);
-      
-      if (manager && employee) {
-        enrichedResults.push({
-          ...fb,
-          manager,
-          employee,
-        });
-      }
+    let filteredFeedback = allFeedback;
+    
+    if (managerId) {
+      filteredFeedback = filteredFeedback.filter(fb => fb.managerId === managerId);
     }
-
-    return enrichedResults;
+    
+    if (employeeId) {
+      filteredFeedback = filteredFeedback.filter(fb => fb.employeeId === employeeId);
+    }
+    
+    return filteredFeedback.map(fb => {
+      const manager = allUsers.find(u => u.id === fb.managerId);
+      const employee = allUsers.find(u => u.id === fb.employeeId);
+      
+      return {
+        ...fb,
+        manager: manager!,
+        employee: employee!,
+      };
+    }).sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
   }
 }
 
