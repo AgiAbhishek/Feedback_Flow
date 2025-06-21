@@ -32,7 +32,7 @@ export default function FeedbackForm({ teamMembers, onClose }: FeedbackFormProps
   const form = useForm<z.infer<typeof feedbackFormSchema>>({
     resolver: zodResolver(feedbackFormSchema),
     defaultValues: {
-      employeeId: "",
+      employeeId: 0,
       strengths: "",
       improvements: "",
       sentiment: "positive",
@@ -102,7 +102,7 @@ export default function FeedbackForm({ teamMembers, onClose }: FeedbackFormProps
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Employee</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value?.toString() || ""}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select team member" />
@@ -110,7 +110,7 @@ export default function FeedbackForm({ teamMembers, onClose }: FeedbackFormProps
                       </FormControl>
                       <SelectContent>
                         {teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id}>
+                          <SelectItem key={member.id} value={member.id.toString()}>
                             {member.firstName} {member.lastName} - {member.email}
                           </SelectItem>
                         ))}

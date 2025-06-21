@@ -57,7 +57,7 @@ export default function ManagerDashboard() {
     !feedbackData.some(f => f.employeeId === member.id)
   ).length;
 
-  const getLastFeedbackForMember = (memberId: string) => {
+  const getLastFeedbackForMember = (memberId: number) => {
     const memberFeedback = feedbackData.filter(f => f.employeeId === memberId);
     return memberFeedback.length > 0 ? memberFeedback[0] : null;
   };
@@ -215,14 +215,14 @@ export default function ManagerDashboard() {
                       <div className="flex items-center space-x-4">
                         <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
                           <span className="text-white font-medium text-sm">
-                            {getInitials(member.firstName, member.lastName)}
+                            {getInitials(member.firstName || undefined, member.lastName || undefined)}
                           </span>
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900">
-                            {member.firstName} {member.lastName}
+                            {member.firstName || ''} {member.lastName || ''}
                           </h4>
-                          <p className="text-sm text-gray-600">{member.email}</p>
+                          <p className="text-sm text-gray-600">{member.email || ''}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
