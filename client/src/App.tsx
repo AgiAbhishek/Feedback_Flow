@@ -8,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/AuthPage";
 import ManagerDashboard from "@/pages/ManagerDashboard";
 import EmployeeDashboard from "@/pages/EmployeeDashboard";
+import AdminDashboard from "@/pages/AdminDashboard";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -26,6 +27,7 @@ function Router() {
         <Route path="/" component={AuthPage} />
       ) : (
         <>
+          {user?.role === 'admin' && <Route path="/" component={AdminDashboard} />}
           {user?.role === 'manager' && <Route path="/" component={ManagerDashboard} />}
           {user?.role === 'employee' && <Route path="/" component={EmployeeDashboard} />}
         </>

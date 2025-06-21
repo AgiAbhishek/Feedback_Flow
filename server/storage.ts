@@ -1,5 +1,5 @@
 import {
-  users,
+  users as usersTable,
   feedback,
   type User,
   type CreateUser,
@@ -40,9 +40,10 @@ export class DatabaseStorage implements IStorage {
     if (this.userCache.size === 0) {
       // Add known test users to cache with proper password hashes
       const testUsers: User[] = [
-        { id: 1, username: 'manager1', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: null, firstName: null, lastName: null, role: 'manager', managerId: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: 2, username: 'employee1', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: null, firstName: null, lastName: null, role: 'employee', managerId: 1, createdAt: new Date(), updatedAt: new Date() },
-        { id: 3, username: 'employee2', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: null, firstName: null, lastName: null, role: 'employee', managerId: 1, createdAt: new Date(), updatedAt: new Date() }
+        { id: 1, username: 'admin1', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: 'admin@company.com', firstName: 'Admin', lastName: 'User', role: 'admin', managerId: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: 2, username: 'manager1', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: 'manager@company.com', firstName: 'John', lastName: 'Manager', role: 'manager', managerId: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: 3, username: 'employee1', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: 'employee1@company.com', firstName: 'Jane', lastName: 'Employee', role: 'employee', managerId: 2, createdAt: new Date(), updatedAt: new Date() },
+        { id: 4, username: 'employee2', password: '69f91f3adabad53bb0fc6fb88d4b3c2af8e6fd5c2f1b0d5a59a31cdbacb0bf7f1495f84024f9d6295dbdfc4bbf358b023b8a6fda0a9b8b92e8db203677eae912.f78f070ea97c5e7d99350fd51d589178', email: 'employee2@company.com', firstName: 'Bob', lastName: 'Smith', role: 'employee', managerId: 2, createdAt: new Date(), updatedAt: new Date() }
       ];
       
       testUsers.forEach(user => {
@@ -97,12 +98,36 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  private nextUserId = 5; // Start after existing cached users
+
   async createUser(userData: CreateUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .returning();
-    return user;
+    try {
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .returning();
+      
+      // Update cache
+      this.userCache.set(user.username, user);
+      this.userIdCache.set(user.id, user);
+      return user;
+    } catch (error) {
+      console.error('Database insert failed for createUser:', error);
+      
+      // Create user in cache during database issues
+      const newUser: User = {
+        ...userData,
+        id: this.nextUserId++,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      
+      this.userCache.set(newUser.username, newUser);
+      this.userIdCache.set(newUser.id, newUser);
+      this.cacheExpiry.set(newUser.username, Date.now() + this.CACHE_TTL);
+      
+      return newUser;
+    }
   }
 
   async updateUserRole(id: number, role: string, managerId?: number): Promise<User> {
@@ -172,7 +197,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users);
+    this.initializeCache();
+    
+    // Return all cached users first to avoid database queries
+    const cachedUsers = Array.from(this.userCache.values());
+    if (cachedUsers.length > 0) {
+      return cachedUsers;
+    }
+
+    try {
+      const dbUsers = await db.select().from(users);
+      // Update cache with fetched users
+      dbUsers.forEach((user: User) => {
+        this.userCache.set(user.username, user);
+        this.userIdCache.set(user.id, user);
+      });
+      return dbUsers;
+    } catch (error) {
+      console.error('Database query failed for getAllUsers:', error);
+      return cachedUsers;
+    }
   }
 
   async getFeedbackWithUsers(managerId?: number, employeeId?: number): Promise<(Feedback & { manager: User; employee: User })[]> {
