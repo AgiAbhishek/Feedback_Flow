@@ -1,118 +1,182 @@
-# FeedbackFlow - Internal Feedback Management System
+# FeedbackFlow - Employee Feedback Management System
 
-## Overview
+A comprehensive employee feedback management system designed for internal company use, enabling structured feedback sharing between managers and employees with role-based access control.
 
-FeedbackFlow is a lightweight feedback management system designed for internal company use, enabling structured feedback sharing between managers and employees. The system features role-based access control, feedback submission and acknowledgment workflows, and clean, modern UI components.
+## 🌐 Live Demo
 
-## System Architecture
+**Deployed Application**: [https://feedback-flow-8i9p.onrender.com](https://feedback-flow-8i9p.onrender.com)
 
-### Full-Stack Application Structure
-- **Frontend**: React with TypeScript, using Vite as the build tool
-- **Backend**: Express.js server with TypeScript
+## 🚀 Features
+
+- **Role-Based Authentication**: Admin, Manager, and Employee access levels
+- **Feedback Management**: Create, view, and acknowledge feedback
+- **Admin Dashboard**: User management and system-wide feedback tracking
+- **Manager Dashboard**: Team management and feedback submission
+- **Employee Dashboard**: View received feedback and acknowledgment system
+- **Real-time Updates**: Live data synchronization across all dashboards
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React + TypeScript, Vite, TailwindCSS, shadcn/ui
+- **Backend**: Express.js + TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
-- **Authentication**: Replit Auth with OpenID Connect
-- **UI Framework**: shadcn/ui components with Tailwind CSS
+- **Authentication**: Session-based with Passport.js
+- **State Management**: TanStack Query
 
-### Monorepo Structure
-The application follows a monorepo pattern with clear separation:
-- `client/` - React frontend application
-- `server/` - Express.js backend server
-- `shared/` - Shared TypeScript types and database schema
-- Root-level configuration files for build tools and deployment
+## 📋 Prerequisites
 
-## Key Components
+- Node.js 20+
+- PostgreSQL 14+
+- npm or yarn
+
+## 🔧 Installation
+
+1. **Clone the repository**
+```bash
+git clone <your-repo-url>
+cd FeedbackFlow
+```
+
+2. **Install dependencies**
+```bash
+npm install
+npm install dotenv
+```
+
+3. **Setup PostgreSQL**
+```bash
+# Install PostgreSQL (macOS)
+brew install postgresql@16
+brew services start postgresql@16
+
+# Create database
+createdb feedbackflow_db
+```
+
+4. **Environment Configuration**
+Create a `.env` file in the root directory:
+```env
+DATABASE_URL="postgresql://yourusername@localhost:5432/feedbackflow_db"
+PGHOST=localhost
+PGPORT=5432
+PGUSER=yourusername
+PGPASSWORD=
+PGDATABASE=feedbackflow_db
+SESSION_SECRET="your-32-character-random-string"
+NODE_ENV=development
+```
+
+Generate session secret:
+```bash
+openssl rand -hex 32
+```
+
+5. **Initialize Database**
+```bash
+npm run db:push
+```
+
+6. **Start Development Server**
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:5000`
+
+## 👥 Default Login Credentials
+
+### Admin User
+- **Username**: `admin1`
+- **Password**: `password123`
+- **Access**: Full system administration, user role management, organization-wide feedback tracking
+
+### Manager User
+- **Username**: `manager1`
+- **Password**: `password123`
+- **Access**: Team management, feedback submission to employees, feedback history
+
+### Employee Users
+- **Username**: `employee1` or `employee2`
+- **Password**: `password123`
+- **Access**: View received feedback, acknowledge feedback, personal dashboard
+
+## 📱 Usage
+
+### Admin Dashboard
+1. Login as `admin1`
+2. Navigate to **User Management** tab to modify user roles
+3. Switch to **Feedback Tracking** tab to monitor all feedback across the organization
+4. View system statistics and user distribution
+
+### Manager Dashboard
+1. Login as `manager1`
+2. View your team members in the **My Team** section
+3. Click **Give Feedback** to submit feedback to employees
+4. Monitor feedback history and acknowledgment status
+
+### Employee Dashboard
+1. Login as `employee1` or `employee2`
+2. View received feedback from managers
+3. Acknowledge feedback by clicking the **Acknowledge** button
+4. Track your feedback history and response status
+
+## 🗂️ Project Structure
+
+```
+FeedbackFlow/
+├── client/                 # React frontend
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── pages/         # Page components
+│   │   ├── hooks/         # Custom React hooks
+│   │   └── lib/           # Utility functions
+├── server/                # Express backend
+│   ├── routes.ts          # API routes
+│   ├── storage.ts         # Database operations
+│   ├── auth.ts           # Authentication logic
+│   └── db.ts             # Database configuration
+├── shared/               # Shared types and schemas
+│   └── schema.ts         # Database schema and types
+└── package.json          # Dependencies and scripts
+```
+
+## 🔑 Key Features
 
 ### Authentication System
-- **Provider**: Traditional username/password authentication with Passport.js Local Strategy
-- **Password Security**: Scrypt-based password hashing with salt
-- **Session Management**: PostgreSQL-backed sessions using connect-pg-simple
-- **Role-based Access**: Two primary roles (manager/employee) with appropriate permissions
-- **Security**: HTTP-only cookies, secure session handling, foreign key constraints
+- Session-based authentication with secure password hashing
+- Role-based access control (Admin, Manager, Employee)
+- Automatic session management and logout functionality
 
-### Database Schema
-- **Users Table**: Stores user profiles with role assignments and manager relationships
-- **Feedback Table**: Stores feedback entries with sentiment analysis and acknowledgment tracking
-- **Sessions Table**: Manages user sessions for authentication
+### Feedback Management
+- Structured feedback forms with strengths and improvements
+- Sentiment analysis (positive, neutral, negative)
+- Acknowledgment workflow for employees
+- Real-time feedback status updates
 
-### Frontend Architecture
-- **Routing**: Client-side routing with wouter
-- **State Management**: TanStack Query for server state management
-- **UI Components**: Comprehensive shadcn/ui component library
-- **Form Handling**: React Hook Form with Zod validation
-- **Styling**: Tailwind CSS with custom design tokens
+### Admin Capabilities
+- User role management with dynamic assignment
+- System-wide feedback monitoring
+- User statistics and analytics
+- Manager-employee relationship management
 
-### Backend API Structure
-- **Authentication Routes**: Login, logout, and user session management
-- **Feedback Routes**: CRUD operations for feedback with role-based authorization
-- **Team Routes**: Manager access to team member information
-
-## Data Flow
-
-### Authentication Flow
-1. User initiates login through Replit Auth
-2. OpenID Connect validates credentials
-3. User session created and stored in PostgreSQL
-4. Role-based dashboard routing (Manager vs Employee)
-
-### Feedback Creation Flow
-1. Manager selects team member from dashboard
-2. Structured form submission (strengths, improvements, sentiment)
-3. Backend validation and database storage
-4. Real-time UI updates via TanStack Query invalidation
-
-### Feedback Acknowledgment Flow
-1. Employee views received feedback
-2. Acknowledgment action triggers API call
-3. Database update with timestamp
-4. Manager dashboard reflects acknowledgment status
-
-## External Dependencies
-
-### Core Runtime Dependencies
-- **Database**: @neondatabase/serverless for PostgreSQL connectivity
-- **ORM**: drizzle-orm with drizzle-kit for migrations
-- **Authentication**: openid-client and passport for auth handling
-- **UI Library**: Complete Radix UI ecosystem via shadcn/ui
-- **State Management**: @tanstack/react-query for server state
-
-### Development Tools
-- **Build System**: Vite for frontend, esbuild for backend
-- **TypeScript**: Full type safety across frontend and backend
-- **Validation**: Zod for runtime type validation
-- **Database**: Drizzle Kit for schema management and migrations
-
-## Deployment Strategy
-
-### Replit Platform Integration
-- **Environment**: Configured for Node.js 20 with PostgreSQL 16
-- **Build Process**: Multi-stage build with frontend and backend compilation
-- **Port Configuration**: Express server on port 5000, external port 80
-- **Auto-scaling**: Configured for autoscale deployment target
+## 🚀 Deployment
 
 ### Production Build
-- Frontend assets built to `dist/public/`
-- Backend compiled with esbuild to `dist/index.js`
-- Static file serving integrated into Express server
-- Environment-based configuration for development vs production
-
-### Database Management
-- Drizzle schema-first approach with TypeScript definitions
-- Migration files generated in `migrations/` directory
-- Connection pooling with Neon serverless PostgreSQL
-- Session storage directly in database for scalability
-
-## Changelog
-
-```
-Changelog:
-- June 20, 2025. Initial setup with complete feedback system
-- June 20, 2025. Fixed authentication session management and query cache synchronization
-- June 20, 2025. Streamlined to 2 core roles (manager/employee) per requirements
-- June 20, 2025. Implemented all minimum features: login system, feedback submission, visibility rules, dashboards
+```bash
+npm run build
 ```
 
-## User Preferences
+### Database Migration
+```bash
+npm run db:push
+```
 
-```
-Preferred communication style: Simple, everyday language.
-```
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/new-feature`
+3. Commit changes: `git commit -am 'Add new feature'`
+4. Push to branch: `git push origin feature/new-feature`
+5. Submit a pull request
+
+**Note**: This system includes sample data for immediate testing. All default passwords should be changed in production environments.
