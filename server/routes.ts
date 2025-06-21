@@ -4,6 +4,16 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated, isAdmin, isManager } from "./auth";
 import { insertFeedbackSchema } from "@shared/schema";
 import { z } from "zod";
+import { scrypt, randomBytes } from "crypto";
+import { promisify } from "util";
+
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -14,6 +24,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Ensure API routes are handled by Express, not Vite
     res.setHeader('Content-Type', 'application/json');
     next();
+  });
+
+  // User creation route (accessible by managers and admins)
+  app.post('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.user.id);
+      
+      if (!currentUser || !['admin', 'manager'].includes(currentUser.role)) {
+        return res.status(403).json({ message: "Only managers and admins can create users" });
+      }
+
+      const userData = req.body;
+      
+      // If current user is a manager creating an employee, set managerId to current user
+      if (currentUser.role === 'manager' && userData.role === 'employee') {
+        userData.managerId = currentUser.id;
+      }
+
+      // Hash the password before storing
+      const hashedPassword = await hashPassword(userData.password);
+      const newUser = await storage.createUser({
+        ...userData,
+        password: hashedPassword,
+      });
+
+      // Don't send password back to frontend
+      const { password, ...safeUser } = newUser;
+      res.status(201).json(safeUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
   });
 
   // Admin routes for role management

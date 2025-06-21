@@ -195,10 +195,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTeamMembers(managerId: number): Promise<User[]> {
-    return await db
-      .select()
-      .from(users)
-      .where(eq(users.managerId, managerId));
+    this.initializeCache();
+    
+    // Return cached team members first
+    const cachedUsers = Array.from(this.userCache.values());
+    const teamMembers = cachedUsers.filter(user => user.managerId === managerId);
+    
+    if (teamMembers.length > 0) {
+      return teamMembers;
+    }
+
+    try {
+      return await db
+        .select()
+        .from(usersTable)
+        .where(eq(usersTable.managerId, managerId));
+    } catch (error) {
+      console.error('Database query failed for getTeamMembers:', error);
+      return teamMembers;
+    }
   }
 
   async getAllUsers(): Promise<User[]> {
@@ -211,7 +226,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     try {
-      const dbUsers = await db.select().from(users);
+      const dbUsers = await db.select().from(usersTable);
       // Update cache with fetched users
       dbUsers.forEach((user: User) => {
         this.userCache.set(user.username, user);
