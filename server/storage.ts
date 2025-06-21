@@ -271,25 +271,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateFeedback(id: number, feedbackData: Partial<InsertFeedback>): Promise<Feedback> {
-    const [updatedFeedback] = await db
-      .update(feedback)
-      .set({ ...feedbackData, updatedAt: new Date() })
-      .where(eq(feedback.id, id))
-      .returning();
-    return updatedFeedback;
+    this.initializeCache();
+    
+    // Update in cache first for immediate response
+    const existingFeedback = this.feedbackCache.get(id);
+    if (existingFeedback) {
+      const updatedFeedback = { ...existingFeedback, ...feedbackData, updatedAt: new Date() };
+      this.feedbackCache.set(id, updatedFeedback);
+      return updatedFeedback;
+    }
+
+    try {
+      const [updatedFeedback] = await db
+        .update(feedback)
+        .set({ ...feedbackData, updatedAt: new Date() })
+        .where(eq(feedback.id, id))
+        .returning();
+      
+      this.feedbackCache.set(id, updatedFeedback);
+      return updatedFeedback;
+    } catch (error) {
+      console.error('Database update failed for updateFeedback:', error);
+      throw error;
+    }
   }
 
   async acknowledgeFeedback(id: number): Promise<Feedback> {
-    const [updatedFeedback] = await db
-      .update(feedback)
-      .set({ 
-        acknowledged: true, 
+    this.initializeCache();
+    
+    // Update in cache first for immediate response
+    const existingFeedback = this.feedbackCache.get(id);
+    if (existingFeedback) {
+      const updatedFeedback = {
+        ...existingFeedback,
+        acknowledged: true,
         acknowledgedAt: new Date(),
-        updatedAt: new Date() 
-      })
-      .where(eq(feedback.id, id))
-      .returning();
-    return updatedFeedback;
+        updatedAt: new Date(),
+      };
+      this.feedbackCache.set(id, updatedFeedback);
+      return updatedFeedback;
+    }
+
+    try {
+      const [updatedFeedback] = await db
+        .update(feedback)
+        .set({ 
+          acknowledged: true, 
+          acknowledgedAt: new Date(),
+          updatedAt: new Date() 
+        })
+        .where(eq(feedback.id, id))
+        .returning();
+      
+      this.feedbackCache.set(id, updatedFeedback);
+      return updatedFeedback;
+    } catch (error) {
+      console.error('Database update failed for acknowledgeFeedback:', error);
+      throw error;
+    }
   }
 
   async getTeamMembers(managerId: number): Promise<User[]> {
